@@ -4,7 +4,15 @@ void ofApp::setup()
 {
 
     // Setup the fbo shader (renderer)
-    renderer.setup(100, 100, GL_RGBA, 5, ofColor(255), "shaders/myShader", "inTex");
+    renderer.setup(100, 100, USE_FLOATS ? GL_RGBA32F : GL_RGBA, NUM_BUFFERS, ofColor(255), "shaders/myShader", "inTex");
+
+    pbo.setup(&renderer);
+
+    // Allocate images for display
+    for (int i = 0; i < NUM_BUFFERS; i++)
+    {
+        displayImages[i].allocate(100, 100, OF_IMAGE_COLOR_ALPHA);
+    }
 
     // Initialize fbos with whatever information you need
     ofSetCircleResolution(32);
@@ -36,25 +44,39 @@ void ofApp::update()
 
     // End rendering
     renderer.end();
+
+    pbo.update();
+
+    // Get pixel data from each buffer and update the display images
+    for (int i = 0; i < NUM_BUFFERS; i++)
+    {
+        if (USE_FLOATS)
+        {
+            displayImages[i].setFromPixels(pbo.getFloatPixels(i));
+        }
+        else
+        {
+            displayImages[i].setFromPixels(pbo.getPixels(i));
+        }
+        displayImages[i].update();
+    }
 }
 
 void ofApp::draw()
 {
+    // Increase y-position to add space for text
+    const int yOffset = 120;
+    const int xOffset = 120;
+    const int imgSize = 100;
 
-    // First texture should be all red
-    renderer.getTex(0).draw(0, 0, 100, 100);
-
-    // Second texture should be a red/yellow/black gradient
-    renderer.getTex(1).draw(100, 0, 100, 100);
-
-    // Third texture is a blue circle
-    renderer.getTex(2).draw(200, 0, 100, 100);
-
-    // Fourth texture is a gradient circle on transparent background
-    renderer.getTex(3).draw(300, 0, 100, 100);
-
-    // Fifth texture is an animated gradient circle on transparent background
-    renderer.getTex(4).draw(400, 0, 100, 100);
+    for (int i = 0; i < NUM_BUFFERS; i++)
+    {
+        ofSetColor(255);
+        renderer.getTex(i).draw(xOffset * i, 0, imgSize, imgSize);
+        displayImages[i].draw(xOffset * i, yOffset, imgSize, imgSize);
+        ofDrawBitmapString("FBO " + ofToString(i), xOffset * i, yOffset - 5);
+        ofDrawBitmapString("PBO " + ofToString(i), xOffset * i, yOffset + imgSize + 15);
+    }
 }
 
 void ofApp::keyPressed(int key)
